@@ -1,14 +1,14 @@
 # SimplySerial
 
 ###### A serial terminal that runs as a Windows console application.
-  
+
 Written by [Edward Wright](mailto:fasteddy@thewrightspace.net) (fasteddy516).
 
 Available at https://github.com/fasteddy516/SimplySerial
 
 # Description
 
-SimplySerial is a basic serial terminal that runs as a Windows console application.  It provides a quick way to connect to - and communicate with - serial devices through Command Prompt or PowerShell.  SimplySerial can be used directly from Command Prompt/PowerShell and should work with most devices that appear in Device Manager as "COMx".  It was, however, written specifically for use within a "terminal" window in [Visual Studio Code](https://code.visualstudio.com/) to provide serial communications with devices running [CircuitPython](https://circuitpython.org/).  Most of the testing and development of this application was done with this use case in mind.  
+SimplySerial is a basic serial terminal that runs as a Windows console application.  It provides a quick way to connect to - and communicate with - serial devices through Command Prompt or PowerShell.  SimplySerial can be used directly from Command Prompt/PowerShell and should work with most devices that appear in Device Manager as "COMx".  It was, however, written specifically for use within a "terminal" window in [Visual Studio Code](https://code.visualstudio.com/) to provide serial communications with devices running [CircuitPython](https://circuitpython.org/).  Most of the testing and development of this application was done with this use case in mind.
 
 # A Quick Note For CircuitPython Users
 
@@ -40,11 +40,11 @@ Download the [latest release](https://github.com/fasteddy516/SimplySerial/releas
 
 For CircuitPython users, type `ss` in a Command Prompt, PowerShell or VSCode Terminal Window and press `enter`.  That's it!
 
-By default, SimplySerial will attempt to identify and connect to a CircuitPython-capable board at 115200 baud, no parity, 8 data bits and 1 stop bit.  If no known boards are detected, it will default to the first available serial (COM) port at 9600 baud.  If there are no COM ports available, it will wait until one shows up, then connect to it. 
+By default, SimplySerial will attempt to identify and connect to a CircuitPython-capable board at 115200 baud, no parity, 8 data bits and 1 stop bit.  If no known boards are detected, it will default to the first available serial (COM) port at 9600 baud.  If there are no COM ports available, it will wait until one shows up, then connect to it.
 
 Once you're connected, you should see messages from the device on COMx appear on screen, and anything you type into Command Prompt/PowerShell will be sent to the device.  CircuitPython users can access the REPL using `CTRL-C` and exit the REPL using `CTRL-D`.
 
-You can exit SimplySerial any time by pressing `CTRL-X`.  
+You can exit SimplySerial any time by pressing `CTRL-X`.
 
 If you have multiple COM ports, multiple CircuitPython devices connected, or need to use different communications settings, you will need to use the appropriate command-line arguments listed below:
 
@@ -52,25 +52,27 @@ If you have multiple COM ports, multiple CircuitPython devices connected, or nee
 
   `-v, --version` displays version and installation information
 
-  `-l, --list` displays a list of available COM ports  
+  `-l, --list` displays a list of available COM ports
 
   `-c, --com` sets the desired COM port (ex. `-c:1` for COM1, `--com:22` for COM22)
 
   `-b, --baud` sets the baud rate (ex. `-b:9600`, `--baud:115200`)
 
-  `-p, --parity` sets the parity option (ex. `-p:none`, `--parity:even`) 
-  
+  `-p, --parity` sets the parity option (ex. `-p:none`, `--parity:even`)
+
   `-d, --databits` sets the number of data bits to use (ex. `-d:8`, `--databits:7`)
 
   `-s, --stopbits` sets the number of stop bits to use (ex. `-s:1`, `--stopbits:1.5`)
 
   `-a, --autoconnect` sets the desired auto-(re)connect behaviour (ex. `a:NONE`, `--autoconnect:ANY`)
-  
+
   `-l, --log` Logs all output to the specified file.  (ex. `-l:ss.log`, `-log:"C:\Users\My Name\my log.txt"`)
-            
+
   `--logmode` Instructs SimplySerial to either `APPEND` to an existing log file, or `OVERWRITE` an existing log file.  In either case, if the specified log file does not exist, it will be created.  If neither option is specified, `OVERWRITE` is assumed.  (ex. `--logmode:APPEND`)
 
   `-q, --quiet` prevents any application messages (connection banner, error messages, etc.) from printing out to the console.
+
+  `-cls` Clear console when conencted and reconnected
 
 If you wanted to connect to a device on COM17 at 115200 baud, you would use the command `ss -c:17 -b:115200`, or if you really enjoy typing `ss --com:17 --baud:115200`.
 
@@ -78,13 +80,13 @@ If you wanted to connect to a device on COM17 at 115200 baud, you would use the 
 # Auto-(re)connect functionality
 
   SimplySerial's `autoconnect` option can be used to determine if and how to connect/reconnect to a device.  These options function as follows:
-  
+
   `--autoconnect:ONE` is the default mode of operation.  If a COM port was specified using the `--com` option, SimplySerial will attempt to connect to the specified port, otherwise it will connect to the first available COM port (giving preference to devices known to be CircuitPython-capable).  In either case, the program will wait until the/a COM port is available, and connect to it when it is.  If the device becomes unavailable at any point (because it was disconnected, etc.), SimplySerial will wait until that specific COM port becomes available again, regardless of any other COM ports that may or may not be available.
-  
+
   `--autoconnect:ANY` is similar to `ONE`, except that when the connected port becomes unavailable, SimplySerial will attempt to connect to any other available port.  This option is useful if you only ever have one COM port available at a time, but can be problematic if you have multiple COM ports connected, or if you have a built-in COM port that is always available.
-  
+
   `--autoconnect:NONE` prevents SimplySerial from waiting for devices and automatically re-connecting.
-  
+
 
 # Using SimplySerial in Visual Studio Code (VSCode)
 
@@ -105,7 +107,7 @@ If you're directly editing the settings.json, the profile section will look like
 
 # Contributing
 
-  If you have questions, problems, feature requests, etc. please post them to the [Issues section on GitHub](https://github.com/fasteddy516/SimplySerial/issues).  If you would like to contribute, please let me know.  I have already put some "enhancement requests" in the GitHub Issues section with some ideas for improvements, most of which were either beyond my limited C#/Windows programming knowledge, or required more time than I had available! 
+  If you have questions, problems, feature requests, etc. please post them to the [Issues section on GitHub](https://github.com/fasteddy516/SimplySerial/issues).  If you would like to contribute, please let me know.  I have already put some "enhancement requests" in the GitHub Issues section with some ideas for improvements, most of which were either beyond my limited C#/Windows programming knowledge, or required more time than I had available!
 
 
 # Acknowledgements
@@ -115,5 +117,3 @@ If you're directly editing the settings.json, the profile section will look like
   The code implemented in v0.6.0 to enable virtual terminal processing is based on Tamás Deme's (@tomzorz) gist about [Enabling VT100 terminal emulation in the current console window](https://gist.github.com/tomzorz/6142d69852f831fb5393654c90a1f22e).
 
   The improved detection of CircuitPython boards in version 0.7.0 is based on Simon Mourier's answer on [this stackoverflow thread](https://stackoverflow.com/questions/69362886/get-devpkey-device-busreporteddevicedesc-from-win32-pnpentity-in-c-sharp) regarding the retrieval of a device's hardware bus description through WMI, with some pointers taken from Adafruit's [adafruit_board_toolkit](https://github.com/adafruit/Adafruit_Board_Toolkit/blob/main/adafruit_board_toolkit).
-
-

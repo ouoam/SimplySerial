@@ -52,6 +52,7 @@ namespace SimplySerial
         static int bufferSize = 102400;
         static DateTime lastFlush = DateTime.Now;
         static bool forceNewline = false;
+        static bool clearScreen = false;
 
         // dictionary of "special" keys with the corresponding string to send out when they are pressed
         static Dictionary<ConsoleKey, String> specialKeys = new Dictionary<ConsoleKey, String>
@@ -245,7 +246,9 @@ namespace SimplySerial
                 }
 
                 // if we get this far, clear the screen and send the connection message if not in 'quiet' mode
-                Console.Clear();
+                if (clearScreen)
+                    Console.Clear();
+
                 Output(String.Format("<<< SimplySerial v{0} connected via {1} >>>\n" +
                     "Settings  : {2} baud, {3} parity, {4} data bits, {5} stop bit{6}, auto-connect {7}.\n" +
                     "Device    : {8} {9}{10}\n{11}" +
@@ -439,6 +442,12 @@ namespace SimplySerial
                     forceNewline = true;
                 }
 
+                // Clear screen when connected and reconnected
+                else if (argument[0].StartsWith("cls"))
+                {
+                    clearScreen = true;
+                }
+
                 // the remainder of possible command-line arguments require two parameters, so let's enforce that now
                 else if (argument.Count() < 2)
                 {
@@ -549,14 +558,15 @@ namespace SimplySerial
                 }
             }
 
-            Console.Clear();
+            if (clearScreen)
+                Console.Clear();
+
             if (autoConnect == AutoConnect.ANY)
             {
                 Output("<<< Attemping to connect to any available COM port.  Use CTRL-X to cancel >>>");
             }
             else if (autoConnect == AutoConnect.ONE)
             {
-                Console.Clear();
                 if (port.name == String.Empty)
                     Output("<<< Attempting to connect to first available COM port.  Use CTRL-X to cancel >>>");
                 else
@@ -634,6 +644,7 @@ namespace SimplySerial
             Console.WriteLine("  -logmode:MODE     APPEND | OVERWRITE, default is OVERWRITE");
             Console.WriteLine("  -quiet            don't print any application messages/errors to console");
             Console.WriteLine("  -forcenewline     Force linefeeds (newline) in place of carriage returns in received data.");
+            Console.WriteLine("  -cls              Clear console when conencted and reconnected");
             Console.WriteLine("\nPress CTRL-X to exit a running instance of SimplySerial.\n");
         }
 
