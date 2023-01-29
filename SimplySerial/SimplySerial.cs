@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -207,10 +207,7 @@ namespace SimplySerial
                 {
                     if (baud < 0)
                     {
-                        if (port.isCircuitPython)
-                            baud = 115200;
-                        else
-                            baud = 9600;
+                        baud = 115200;
                     }
                     
                     serialPort.BaudRate = baud;
