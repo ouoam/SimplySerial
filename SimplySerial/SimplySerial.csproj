@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -127,6 +127,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>"C:\Program Files\7-Zip\7z.exe" a "$(TargetDir)\SimplySerial_standalone.zip" "$(TargetDir)\ss.exe" "$(ProjectDir)\..\LICENSE" "$(ProjectDir)\..\README.md" "$(TargetDir)\boards.json" "$(TargetDir)\ss.exe.config" "$(TargetDir)\Newtonsoft.Json.dll"</PostBuildEvent>
+    <PostBuildEvent>powershell Compress-Archive -Path '$(TargetDir)\ss.exe', '$(ProjectDir)\..\LICENSE', '$(ProjectDir)\..\README.md', '$(TargetDir)\boards.json', '$(TargetDir)\ss.exe.config', '$(TargetDir)\Newtonsoft.Json.dll' -DestinationPath '$(TargetDir)\SimplySerial_standalone.zip' -Force</PostBuildEvent>
   </PropertyGroup>
 </Project>
