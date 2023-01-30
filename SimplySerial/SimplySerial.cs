@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -684,7 +684,11 @@ namespace SimplySerial
         {
             // the serial port should be closed before exiting
             if (serialPort != null && serialPort.IsOpen)
+            {
+                serialPort.RtsEnable = false;
+                serialPort.DtrEnable = false; // usbser.sys workaround
                 serialPort.Close();
+            }
             if (!silent)
                 Output("\n" + message, flush: true);
             else if (logging)
