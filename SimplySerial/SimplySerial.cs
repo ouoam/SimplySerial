@@ -249,6 +249,8 @@ namespace SimplySerial
                 if (clearScreen)
                     Console.Clear();
 
+                Console.Title = port.name + " - Connected";
+
                 Output(String.Format("<<< SimplySerial v{0} connected via {1} >>>\n" +
                     "Settings  : {2} baud, {3} parity, {4} data bits, {5} stop bit{6}, auto-connect {7}.\n" +
                     "Device    : {8} {9}{10}\n{11}" +
@@ -350,10 +352,12 @@ namespace SimplySerial
                         {
                             port.name = String.Empty;
                             Output("<<< Attemping to connect to any available COM port.  Use CTRL-X to cancel >>>");
+                            Console.Title = "None - Finding available port";
                         }
                         else if (autoConnect == AutoConnect.ONE)
                         {
                             Output("<<< Attempting to re-connect to " + port.name + ". Use CTRL-X to cancel >>>");
+                            Console.Title = port.name + " - Reconnecting";
                         }
                         break;
                     }
