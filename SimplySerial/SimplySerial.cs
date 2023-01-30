@@ -227,6 +227,7 @@ namespace SimplySerial
                 try
                 {
                     serialPort.Open();
+                    serialPort.DiscardInBuffer();
                 }
                 catch (Exception e)
                 {
