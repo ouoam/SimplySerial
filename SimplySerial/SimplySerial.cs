@@ -227,6 +227,10 @@ namespace SimplySerial
                 try
                 {
                     serialPort.Open();
+
+                    // flush input buffer
+                    received = serialPort.ReadExisting();
+                    received = string.Empty;
                 }
                 catch (Exception e)
                 {
