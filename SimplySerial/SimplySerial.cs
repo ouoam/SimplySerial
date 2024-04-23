@@ -9,6 +9,9 @@ using System.Management;
 using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
 using Newtonsoft.Json;
+using System.Runtime.ConstrainedExecution;
+using System.Security.Cryptography;
+using System.Timers;
 
 namespace SimplySerial
 {
@@ -45,6 +48,7 @@ namespace SimplySerial
         static Parity parity = Parity.None;
         static int dataBits = 8;
         static StopBits stopBits = StopBits.One;
+        static bool enterConfigMode = false;
         static bool logging = false;
         static FileMode logMode = FileMode.Create;
         static string logFile = string.Empty;
@@ -122,7 +126,7 @@ namespace SimplySerial
             
             // set up keyboard input for program control / relay to serial port
             ConsoleKeyInfo keyInfo = new ConsoleKeyInfo();
-            Console.TreatControlCAsInput = true; // we need to use CTRL-C to activate the REPL in CircuitPython, so it can't be used to exit the application
+            // Console.TreatControlCAsInput = true; // we need to use CTRL-C to activate the REPL in CircuitPython, so it can't be used to exit the application
 
             // this is where data read from the serial port will be temporarily stored
             string received = string.Empty;
@@ -250,6 +254,11 @@ namespace SimplySerial
                 if (clearScreen)
                     Console.Clear();
 
+                if (enterConfigMode)
+                {
+                    EnterConfigMode(serialPort);
+                }
+
                 Console.Title = port.name + " - Connected";
 
                 Output(String.Format("<<< SimplySerial v{0} connected via {1} >>>\n" +
@@ -295,6 +304,11 @@ namespace SimplySerial
                             // check for keys that require special processing (cursor keys, etc.)
                             else if (specialKeys.ContainsKey(keyInfo.Key))
                                 serialPort.Write(specialKeys[keyInfo.Key]);
+
+                            else if ((keyInfo.Key == ConsoleKey.D) && (keyInfo.Modifiers == ConsoleModifiers.Control))
+                            {
+                                EnterConfigMode(serialPort);
+                            }
 
                             // everything else just gets sent right on through
                             else
@@ -367,6 +381,61 @@ namespace SimplySerial
 
             // if we get to this point, we should be exiting gracefully
             ExitProgram("<<< SimplySerial session terminated >>>", exitCode: 0);
+        }
+
+        static void EnterConfigMode(SerialPort serialPort)
+        {
+            bool found = false;
+
+            Output("\n\n<<< Try enter config mode >>>\n");
+
+            for (int retry = 0; retry < 3; retry++)
+            {
+                serialPort.DiscardInBuffer();
+
+                serialPort.DtrEnable = false;
+                serialPort.RtsEnable = true;
+                serialPort.DtrEnable = serialPort.DtrEnable; // usbser.sys workaround
+                Thread.Sleep(100);
+                serialPort.RtsEnable = false;
+                serialPort.DtrEnable = serialPort.DtrEnable; // usbser.sys workaround
+
+                serialPort.RtsEnable = true;
+                serialPort.DtrEnable = true;
+
+                Thread.Sleep(100);
+
+                for (int i = 0; i < 10; i++)
+                {
+                    serialPort.ReadTimeout = 20;
+                    serialPort.Write("\x1b[3~");
+                    try
+                    {
+                        serialPort.ReadTo("/> ");
+                        found = true;
+                        break;
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+                }
+
+                if (found)
+                {
+                    break;
+                }
+
+                Output("\n<<< Will retry enter config mode >>>\n");
+                Thread.Sleep(1000);
+            }
+
+            if (!found)
+            {
+                Output("\n<<< Can not enter config mode >>>\n");
+            }
+
+            serialPort.ReadTimeout = 1;
         }
 
         /// <summary>
@@ -451,6 +520,12 @@ namespace SimplySerial
                 else if (argument[0].StartsWith("cls"))
                 {
                     clearScreen = true;
+                }
+
+                // Enter config mode
+                else if (argument[0].StartsWith("con"))
+                {
+                    enterConfigMode = true;
                 }
 
                 // the remainder of possible command-line arguments require two parameters, so let's enforce that now
@@ -650,6 +725,7 @@ namespace SimplySerial
             Console.WriteLine("  -quiet            don't print any application messages/errors to console");
             Console.WriteLine("  -forcenewline     Force linefeeds (newline) in place of carriage returns in received data.");
             Console.WriteLine("  -cls              Clear console when conencted and reconnected");
+            Console.WriteLine("  -config           Enter config mode");
             Console.WriteLine("\nPress CTRL-X to exit a running instance of SimplySerial.\n");
         }
 
