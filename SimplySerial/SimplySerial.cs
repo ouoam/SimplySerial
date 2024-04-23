@@ -272,6 +272,7 @@ namespace SimplySerial
                 if (enterConfigMode)
                 {
                     EnterConfigMode(serialPort);
+                    enterConfigMode = false;
                 }
 
                 Console.Title = port.name + " - Connected";
