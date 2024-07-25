@@ -131,7 +131,7 @@ namespace SimplySerial
 
             // set up keyboard input for program control / relay to serial port
             ConsoleKeyInfo keyInfo = new ConsoleKeyInfo();
-            // Console.TreatControlCAsInput = true; // we need to use CTRL-C to activate the REPL in CircuitPython, so it can't be used to exit the application
+            Console.TreatControlCAsInput = true; // we need to use CTRL-C to activate the REPL in CircuitPython, so it can't be used to exit the application
 
             // this is where data read from the serial port will be temporarily stored
             string received = string.Empty;
