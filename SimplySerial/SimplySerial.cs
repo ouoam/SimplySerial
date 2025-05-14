@@ -434,7 +434,7 @@ namespace SimplySerial
 
                 Thread.Sleep(100);
 
-                for (int i = 0; i < 10; i++)
+                for (int i = 0; i < 30; i++)
                 {
                     serialPort.ReadTimeout = 20;
                     serialPort.Write("\x1b[3~");
