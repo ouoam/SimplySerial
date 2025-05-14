@@ -333,9 +333,6 @@ namespace SimplySerial
                 {
                     Output("");
                 }
-
-                Console.Title = port.name + " - Connected";
-
                 Output(String.Format("<<< SimplySerial v{0} connected via {1} >>>\n" +
                     "Settings  : {2} baud, {3} parity, {4} data bits, {5} stop bit{6}, {7} encoding, auto-connect {8}, echo {9}{10}\n" +
                     "Device    : {11} {12}{13}\n{14}" +
