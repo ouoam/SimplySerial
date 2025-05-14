@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
@@ -516,6 +517,7 @@ namespace SimplySerial
                     {
 
                     }
+                    CheckExitKey();
                 }
 
                 if (found)
@@ -523,8 +525,8 @@ namespace SimplySerial
                     break;
                 }
 
-                Output("\n<<< Will retry enter config mode >>>\n");
-                Thread.Sleep(1000);
+                Output("<<< Attempting to enter config mode >>>");
+                CheckKeyAndSleep(1000);
             }
 
             if (!found)
@@ -533,6 +535,32 @@ namespace SimplySerial
             }
 
             serialPort.ReadTimeout = 1;
+        }
+
+        static void CheckKeyAndSleep(int millisecondsTimeout)
+        {
+            TimeSpan countdown = TimeSpan.FromMilliseconds(millisecondsTimeout);
+            Stopwatch timer = new Stopwatch();
+            timer.Start();
+
+            while (timer.Elapsed < countdown) {
+                CheckExitKey();
+                Thread.Sleep(100);
+            }
+        }
+
+        static void CheckExitKey()
+        {
+            ConsoleKeyInfo keyInfo = new ConsoleKeyInfo();
+            if (Console.KeyAvailable)
+            {
+                keyInfo = Console.ReadKey(intercept: true);
+                if ((keyInfo.Key == exitKey) && (keyInfo.Modifiers == ConsoleModifiers.Control))
+                {
+                    Output($"\n<<< SimplySerial session terminated via CTRL-{exitKey} >>>");
+                    ExitProgram(silent: true);
+                }
+            }
         }
 
         static bool ArgProcessor_OnOff(string value)
