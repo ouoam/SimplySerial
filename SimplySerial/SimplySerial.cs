@@ -54,7 +54,6 @@ namespace SimplySerial
         static Parity parity = Parity.None;
         static int dataBits = 8;
         static StopBits stopBits = StopBits.One;
-        static bool enterConfigMode = false;
         static bool logging = false;
         static FileMode logMode = FileMode.Create;
         static string logFile = string.Empty;
@@ -333,12 +332,6 @@ namespace SimplySerial
                 else
                 {
                     Output("");
-                }
-
-                if (enterConfigMode)
-                {
-                    EnterConfigMode(serialPort);
-                    enterConfigMode = false;
                 }
 
                 Console.Title = port.name + " - Connected";
@@ -1144,7 +1137,6 @@ namespace SimplySerial
             Console.WriteLine("                    Bytes sequence must be a hexadecimal value with or without leading 0x and separated or not by spaces.");
             Console.WriteLine("                    Determines what character(s) will be sent when the enter key is pressed.");
             Console.WriteLine("  -config:FILE      Load command-line arguments from the specified configuration file. (One command per line.)");
-            Console.WriteLine("  -conf             Enter config mode");
             Console.WriteLine($"\nPress CTRL-{exitKey} to exit a running instance of SimplySerial.\n");
         }
 
