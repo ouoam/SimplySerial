@@ -107,17 +107,20 @@ namespace SimplySerial
 
                 // extract the device's hardware bus description
                 c.busDescription = "";
-                var inParams = new object[] { new string[] { "DEVPKEY_Device_BusReportedDeviceDesc" }, null };
-                p.InvokeMethod("GetDeviceProperties", inParams);
-                var outParams = (ManagementBaseObject[])inParams[1];
-                if (outParams.Length > 0)
+                try
                 {
-                    var data = outParams[0].Properties.OfType<PropertyData>().FirstOrDefault(d => d.Name == "Data");
-                    if (data != null)
+                    var inParams = new object[] { new string[] { "DEVPKEY_Device_BusReportedDeviceDesc" }, null };
+                    p.InvokeMethod("GetDeviceProperties", inParams);
+                    var outParams = (ManagementBaseObject[])inParams[1];
+                    if (outParams.Length > 0)
                     {
-                        c.busDescription = data.Value.ToString();
+                        var data = outParams[0].Properties.OfType<PropertyData>().FirstOrDefault(d => d.Name == "Data");
+                        if (data != null)
+                        {
+                            c.busDescription = data.Value.ToString();
+                        }
                     }
-                }
+                } catch { }
 
                 // we can determine if this is a CircuitPython board by its bus description
                 foreach (string prefix in cpb_descriptions)
