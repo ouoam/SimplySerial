@@ -233,7 +233,7 @@ namespace SimplySerial
                             ExitProgram("No COM ports detected.", exitCode: -1);
                         else
                         {
-                            Thread.Sleep(1000); // putting a delay here to avoid gobbling tons of resources thruogh constant high-speed re-connect attempts
+                            Thread.Sleep(100); // putting a delay here to avoid gobbling tons of resources thruogh constant high-speed re-connect attempts
                             continue;
                         }
                     }
@@ -261,7 +261,7 @@ namespace SimplySerial
                             ExitProgram(("Invalid port specified <" + port.name + ">"), exitCode: -1);
                         else
                         {
-                            Thread.Sleep(1000); // putting a delay here to avoid gobbling tons of resources thruogh constant high-speed re-connect attempts
+                            Thread.Sleep(100); // putting a delay here to avoid gobbling tons of resources thruogh constant high-speed re-connect attempts
                             continue;
                         }
                     }
@@ -491,7 +491,7 @@ namespace SimplySerial
         {
             bool found = false;
 
-            Output("\n\n<<< Try enter config mode >>>\n");
+            Output("\n<<< Try enter config mode >>>\n");
 
             for (int retry = 0; retry < 3; retry++)
             {
@@ -519,10 +519,7 @@ namespace SimplySerial
                         found = true;
                         break;
                     }
-                    catch (Exception e)
-                    {
-
-                    }
+                    catch { }
                     CheckExitKey();
                 }
 
@@ -537,7 +534,14 @@ namespace SimplySerial
 
             if (!found)
             {
-                Output("\n<<< Can not enter config mode >>>\n");
+                Output("<<< Can not enter config mode >>>");
+            }
+            else
+            {
+                Output("<<< Successful enter config mode >>>");
+
+                // Print out receive
+                Output("/> ", force: true, newline: false);
             }
 
             serialPort.ReadTimeout = 1;
@@ -577,7 +581,7 @@ namespace SimplySerial
             {
                 return $"{seconds}s";
             }
-            
+
             UInt64 minutes = Convert.ToUInt64(diff.TotalMinutes);
             if (minutes < 60)
             {
@@ -1187,7 +1191,7 @@ namespace SimplySerial
             Console.WriteLine("  -clearscreen:VAL  ON | OFF enable/disable clearing of the terminal screen on connection.");
             Console.WriteLine("  -status:VAL       ON | OFF enable/disable status/title updates from virtual terminal sequences.");
             Console.WriteLine("  -exitkey:KEY      Specify a key to use along with CTRL for exiting the program (default is 'X').");
-            Console.WriteLine("  -title:\"TITLE\"  Set the console window title.  Surround with quotation marks if your title has spaces.");
+            Console.WriteLine("  -title:\"TITLE\"    Set the console window title.  Surround with quotation marks if your title has spaces.");
             Console.WriteLine("  -bulksend:VAL     ON | OFF enable or disable bulk send mode (send all characters typed/pasted at once).");
             Console.WriteLine("  -txonenter:VAL    CR | LF | CRLF | CUSTOM=\"CustomString\" | BYTES=\"custom sequence of bytes\", each byte must be expressed by 2 chars.");
             Console.WriteLine("                    Bytes sequence must be a hexadecimal value with or without leading 0x and separated or not by spaces.");
