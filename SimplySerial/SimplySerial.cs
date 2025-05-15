@@ -130,7 +130,7 @@ namespace SimplySerial
                 if (port.name == String.Empty)
                 {
                     UpdateTitle("SimplySerial: Searching...");
-                    Output($"<<< Attempting to connect to first available COM port.  Use CTRL-{exitKey} to cancel >>>");
+                    Output($"<<< Attempting to connect to last available COM port.  Use CTRL-{exitKey} to cancel >>>");
                 }
                 else
                 {
@@ -205,6 +205,12 @@ namespace SimplySerial
                     // if there are com ports available, pick one
                     if (Ports.Available.Count() > 0)
                     {
+                        Ports.Available.Sort(delegate (ComPort x, ComPort y)
+                        {
+                            // more to less
+                            return y.lastArrival.CompareTo(x.lastArrival);
+                        });
+
                         // first, try to default to something that we assume is running CircuitPython unless this behaviour has been disabled by a filter
                         if (ComPortManager.Filters.Exclude.Find(f => f.Match == FilterMatch.CIRCUITPYTHON) == null)
                         {
@@ -563,6 +569,30 @@ namespace SimplySerial
             }
         }
 
+        static string FormatDateDistance(DateTime date)
+        {
+            TimeSpan diff = DateTime.Now - date;
+            UInt64 seconds = Convert.ToUInt64(diff.TotalSeconds);
+            if (seconds < 60)
+            {
+                return $"{seconds}s";
+            }
+            
+            UInt64 minutes = Convert.ToUInt64(diff.TotalMinutes);
+            if (minutes < 60)
+            {
+                return $"{seconds/60}m{seconds%60}s";
+            }
+
+            if (minutes < 60 * 24)
+            {
+                return $"{minutes/60}h{minutes%60}m";
+            }
+
+            UInt64 hours = Convert.ToUInt64(diff.TotalHours);
+            return $"{hours/24}d{hours%24}h";
+        }
+
         static bool ArgProcessor_OnOff(string value)
         {
             value = value.ToLower();
@@ -621,17 +651,18 @@ namespace SimplySerial
 
                 if (ports.Available.Count > 0 || (showExcluded == true && ports.Excluded.Count > 0))
                 {
-                    Console.WriteLine("\nPORT\tVID\tPID\tDESCRIPTION [DEVICE]");
+                    Console.WriteLine("\nPORT\tVID\tPID\tArrival\tDESCRIPTION [DEVICE]");
                     Console.WriteLine("----------------------------------------------------------------------");
 
                     if (ports.Available.Count > 0)
                     {
                         foreach (ComPort p in ports.Available)
                         {
-                            Console.WriteLine("{0}\t{1}\t{2}\t{3} {4}",
+                            Console.WriteLine("{0}\t{1}\t{2}\t{3}\t{4} {5}",
                                 p.name,
                                 p.vid,
                                 p.pid,
+                                FormatDateDistance(p.lastArrival),
                                 (p.isCircuitPython) ? (p.board.make + " " + p.board.model) : p.description,
                                 ((p.busDescription.Length > 0) && !p.description.StartsWith(p.busDescription)) ? ("[" + p.busDescription + "]") : ""
                             );

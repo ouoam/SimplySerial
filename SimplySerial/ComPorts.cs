@@ -20,6 +20,7 @@ namespace SimplySerial
         public string pid = "----";
         public string description;
         public string busDescription;
+        public DateTime lastArrival;
         public Board board;
         public bool isCircuitPython = false;
     }
@@ -121,6 +122,24 @@ namespace SimplySerial
                         }
                     }
                 } catch { }
+
+                // extract the device's last arrival
+                c.lastArrival = DateTime.MinValue;
+                try
+                {
+                    var inParams = new object[] { new string[] { "DEVPKEY_Device_LastArrivalDate" }, null };
+                    p.InvokeMethod("GetDeviceProperties", inParams);
+                    var outParams = (ManagementBaseObject[])inParams[1];
+                    if (outParams.Length > 0)
+                    {
+                        var data = outParams[0].Properties.OfType<PropertyData>().FirstOrDefault(d => d.Name == "Data");
+                        if (data != null)
+                        {
+                            c.lastArrival = ManagementDateTimeConverter.ToDateTime(data.Value.ToString());
+                        }
+                    }
+                }
+                catch { }
 
                 // we can determine if this is a CircuitPython board by its bus description
                 foreach (string prefix in cpb_descriptions)
