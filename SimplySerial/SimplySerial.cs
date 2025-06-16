@@ -69,6 +69,7 @@ namespace SimplySerial
         static ConsoleKey exitKey = ConsoleKey.X;
         static bool localEcho = false;
         static bool bulkSend = false;
+        static bool disableDtrRts = false;
 
         // dictionary of "special" keys with the corresponding string to send out when they are pressed
         static Dictionary<ConsoleKey, String> specialKeys = new Dictionary<ConsoleKey, String>
@@ -273,10 +274,14 @@ namespace SimplySerial
                     Handshake = Handshake.None, // we don't need to support any handshaking at this point
                     ReadTimeout = 1, // minimal timeout - we don't want to wait forever for data that may not be coming!
                     WriteTimeout = 250, // small delay - if we go too small on this it causes System.IO semaphore timeout exceptions
-                    DtrEnable = true, // without this we don't ever receive any data
-                    RtsEnable = true, // without this we don't ever receive any data
                     Encoding = encoding
                 };
+
+                if (!disableDtrRts)
+                {
+                    serialPort.DtrEnable = true; // without this we don't ever receive any data
+                    serialPort.RtsEnable = true; // without this we don't ever receive any data
+                }
 
                 // attempt to set the baud rate, fail if the specified value is not supported by the hardware
                 try
@@ -928,6 +933,11 @@ namespace SimplySerial
             }
         }
 
+        static void ArgHandler_DisableDtrRts(string value)
+        {
+            disableDtrRts = ArgProcessor_OnOff(value);
+        }
+
         static List<ArgumentData> ParseArguments(string[] args, bool noImmediate = false, string source = "")
         {
             List<ArgumentData> receivedArguments = new List<ArgumentData>();
@@ -1032,6 +1042,7 @@ namespace SimplySerial
             CommandLineArguments.Add("logmode", new CommandLineArgument("logmode", handler: ArgHandler_LogMode));
             CommandLineArguments.Add("parity", new CommandLineArgument("parity", handler: ArgHandler_Parity));
             CommandLineArguments.Add("txonenter", new CommandLineArgument("txonenter", handler: ArgHandler_TXOnEnter));
+            CommandLineArguments.Add("disabledtrrts", new CommandLineArgument("disabledtrrts", handler: ArgHandler_DisableDtrRts));
 
             // Create a list of command-line arguments sorted by priority for processing
             List<CommandLineArgument> argumentsByPriority = CommandLineArguments.Values.OrderBy(a => a.Priority).ToList();
@@ -1197,6 +1208,7 @@ namespace SimplySerial
             Console.WriteLine("                    Bytes sequence must be a hexadecimal value with or without leading 0x and separated or not by spaces.");
             Console.WriteLine("                    Determines what character(s) will be sent when the enter key is pressed.");
             Console.WriteLine("  -config:FILE      Load command-line arguments from the specified configuration file. (One command per line.)");
+            Console.WriteLine("  -disabledtrrts    Disables DTR and RTS asserted");
             Console.WriteLine($"\nPress CTRL-{exitKey} to exit a running instance of SimplySerial.\n");
         }
 
@@ -1263,8 +1275,11 @@ namespace SimplySerial
             // the serial port should be closed before exiting
             if (serialPort != null && serialPort.IsOpen)
             {
-                serialPort.RtsEnable = false;
-                serialPort.DtrEnable = false; // usbser.sys workaround
+                if (!disableDtrRts)
+                {
+                    serialPort.RtsEnable = false;
+                    serialPort.DtrEnable = false; // usbser.sys workaround
+                }
                 serialPort.Close();
             }
             if (!silent)
