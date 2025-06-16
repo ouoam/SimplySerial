@@ -346,9 +346,9 @@ namespace SimplySerial
                     Output("");
                 }
                 Output(String.Format("<<< SimplySerial v{0} connected via {1} >>>\n" +
-                    "Settings  : {2} baud, {3} parity, {4} data bits, {5} stop bit{6}, {7} encoding, auto-connect {8}, echo {9}{10}\n" +
-                    "Device    : {11} {12}{13}\n{14}" +
-                    "---\n\nUse CTRL-{15} to exit.\n",
+                    "Settings  : {2} baud, {3} parity, {4} data bits, {5} stop bit{6}, {7} encoding, auto-connect {8}, echo {9}{10}{11}\n" +
+                    "Device    : {12} {13}{14} {15} {16}\n{17}" +
+                    "---\n\nUse CTRL-{18} to exit.\n",
                     version,
                     port.name,
                     baud,
@@ -359,12 +359,15 @@ namespace SimplySerial
                     (autoConnect == AutoConnect.ONE) ? "on" : (autoConnect == AutoConnect.ANY) ? "any" : "off",
                     (localEcho) ? "on" : "off",
                     (bulkSend) ? ", bulk send enabled" : "",
+                    (disableDtrRts) ? ", Disable DTR/RTS" : "",
                     port.board.make,
                     port.board.model,
                     (port.isCircuitPython) ? " (CircuitPython-capable)" : "",
+                    port.description,
+                    ((port.busDescription.Length > 0) && !port.description.StartsWith(port.busDescription)) ? ("[" + port.busDescription + "]") : "",
                     (logging == true) ? ($"Logfile   : {logFile} (Mode = " + ((logMode == FileMode.Create) ? "OVERWRITE" : "APPEND") + ")\n") : "",
                     exitKey
-                ), flush: true); ;
+                ), flush: true);
 
                 lastFlush = DateTime.Now;
                 DateTime start = DateTime.Now;
