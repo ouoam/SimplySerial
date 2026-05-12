@@ -72,6 +72,12 @@ namespace SimplySerial
         static bool disableDtrRts = false;
         static string stm32CliPath = "STM32_Programmer_CLI";
 
+        // Named Win32 events for cooperative port handoff to external tools (e.g. upload.py).
+        // External process signals 'release' to ask us to drop the port; we signal 'released'
+        // back once closed; we reconnect once 'release' is reset.
+        static EventWaitHandle ipcReleaseRequest;
+        static EventWaitHandle ipcReleasedConfirm;
+
         // dictionary of "special" keys with the corresponding string to send out when they are pressed
         static Dictionary<ConsoleKey, String> specialKeys = new Dictionary<ConsoleKey, String>
         {
@@ -309,6 +315,7 @@ namespace SimplySerial
                 {
                     serialPort.Open();
                     serialPort.DiscardInBuffer();
+                    OpenIpcEvents(port.name);
                 }
                 catch (Exception e)
                 {
@@ -381,6 +388,13 @@ namespace SimplySerial
                 {
                     try
                     {
+                        // honor an external "release" request (named Win32 event)
+                        if (ipcReleaseRequest != null && ipcReleaseRequest.WaitOne(0))
+                        {
+                            HandleIpcRelease(serialPort);
+                            break; // fall into the existing auto-reconnect path
+                        }
+
                         // process keypresses for transmission through the serial port
                         while (Console.KeyAvailable)
                         {
@@ -566,6 +580,45 @@ namespace SimplySerial
             }
 
             serialPort.ReadTimeout = 1;
+        }
+
+        static void OpenIpcEvents(string portName)
+        {
+            // safe to re-call on reconnect: same names map to the same kernel object.
+            try
+            {
+                bool created;
+                ipcReleaseRequest = new EventWaitHandle(false, EventResetMode.ManualReset,
+                    $"simplyserial-{portName}-release", out created);
+                ipcReleasedConfirm = new EventWaitHandle(false, EventResetMode.ManualReset,
+                    $"simplyserial-{portName}-released", out created);
+                // make sure we start in a clean state — external process may have left them set
+                ipcReleaseRequest.Reset();
+                ipcReleasedConfirm.Reset();
+            }
+            catch
+            {
+                // events are optional; if creation fails (rare), continue without IPC.
+                ipcReleaseRequest = null;
+                ipcReleasedConfirm = null;
+            }
+        }
+
+        static void HandleIpcRelease(SerialPort serialPort)
+        {
+            Output("\n<<< Port released to external process — waiting for it to finish >>>");
+            try { serialPort.Close(); } catch { }
+            ipcReleasedConfirm?.Set();
+
+            // wait until the external process clears the release request
+            while (ipcReleaseRequest != null && ipcReleaseRequest.WaitOne(0))
+            {
+                CheckExitKey();
+                Thread.Sleep(200);
+            }
+
+            ipcReleasedConfirm?.Reset();
+            Output("<<< External process finished — reconnecting >>>");
         }
 
         static bool ResetViaSwd(SerialPort serialPort)
@@ -1359,6 +1412,9 @@ namespace SimplySerial
                 }
                 serialPort.Close();
             }
+
+            ipcReleaseRequest?.Dispose();
+            ipcReleasedConfirm?.Dispose();
             if (!silent)
                 Output("\n" + message, flush: true);
             else if (logging)
