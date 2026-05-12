@@ -123,6 +123,33 @@ namespace SimplySerial
                 // extract the device's friendly description (caption)
                 c.description = p.GetPropertyValue("Caption").ToString();
 
+                // for FTDI devices the COM port's own caption is the generic "USB Serial Port (COMxx)".
+                // The USB parent's BusReportedDeviceDesc carries the iProduct string from the EEPROM
+                // (e.g. "Smart Meter"), which is far more useful than the generic driver caption
+                // ("USB Serial Converter"). Fall back to the parent caption when no iProduct is set.
+                if (c.vid == "0403")
+                {
+                    ManagementObject usbParent = FindUsbRootParent(p, pidvid);
+                    if (usbParent != null)
+                    {
+                        string parentProduct = GetDeviceProperty(usbParent, "DEVPKEY_Device_BusReportedDeviceDesc");
+                        if (!string.IsNullOrEmpty(parentProduct))
+                        {
+                            c.description = parentProduct;
+                        }
+                        else
+                        {
+                            try
+                            {
+                                string parentCaption = usbParent.GetPropertyValue("Caption")?.ToString();
+                                if (!string.IsNullOrEmpty(parentCaption))
+                                    c.description = parentCaption;
+                            }
+                            catch { }
+                        }
+                    }
+                }
+
                 // attempt to match this device with a known board
                 c.board = BoardManager.Match(c.vid, c.pid);
 
