@@ -24,6 +24,7 @@ namespace SimplySerial
         public Board board;
         public bool isCircuitPython = false;
         public bool isStLink = false;
+        public string stLinkSerial = "";
     }
 
 
@@ -39,7 +40,7 @@ namespace SimplySerial
         public static FilterSet Filters = new FilterSet();
 
         /// <summary>
-        /// Returns a list of available serial ports with their associated PID, VID and descriptions 
+        /// Returns a list of available serial ports with their associated PID, VID and descriptions
         /// Modified from the example written by Kamil Górski (freakone) available at
         /// http://blog.gorski.pm/serial-port-details-in-c-sharp
         /// https://github.com/freakone/serial-reader
@@ -169,6 +170,8 @@ namespace SimplySerial
 
                 // detect ST-Link debugger virtual COM port
                 // match by known VID/PID, or by STMicroelectronics VID + "STLink"/"ST-Link" in description
+                // only flag as ST-Link if we can also resolve the probe's hardware serial number,
+                // so SWD reset can unambiguously target the correct adapter (multi-probe safe).
                 if (c.vid == "0483" &&
                     (stlinkPids.Contains(c.pid) ||
                      c.description.IndexOf("STLink", StringComparison.OrdinalIgnoreCase) >= 0 ||
@@ -176,7 +179,8 @@ namespace SimplySerial
                      c.busDescription.IndexOf("STLink", StringComparison.OrdinalIgnoreCase) >= 0 ||
                      c.busDescription.IndexOf("ST-Link", StringComparison.OrdinalIgnoreCase) >= 0))
                 {
-                    c.isStLink = true;
+                    c.stLinkSerial = ResolveStLinkSerial(p, pidvid);
+                    c.isStLink = !string.IsNullOrEmpty(c.stLinkSerial);
                 }
 
                 detectedPorts.Add(c);
@@ -235,6 +239,93 @@ namespace SimplySerial
             }
 
             return ports;
+        }
+
+        /// <summary>
+        /// Invokes Win32_PnPEntity.GetDeviceProperties for a single DEVPKEY and returns the value as a string.
+        /// Returns "" on any error or if the property is unset.
+        /// </summary>
+        private static string GetDeviceProperty(ManagementObject obj, string devPropKey)
+        {
+            try
+            {
+                var inParams = new object[] { new string[] { devPropKey }, null };
+                obj.InvokeMethod("GetDeviceProperties", inParams);
+                var outParams = (ManagementBaseObject[])inParams[1];
+                if (outParams.Length == 0)
+                    return "";
+                var data = outParams[0].Properties.OfType<PropertyData>().FirstOrDefault(d => d.Name == "Data");
+                if (data == null || data.Value == null)
+                    return "";
+                return data.Value.ToString();
+            }
+            catch { }
+            return "";
+        }
+
+        /// <summary>
+        /// Walks the USB device parent chain from a child (e.g. a VCP/CDC interface) up to the
+        /// root USB device — the instance whose PNPDeviceID looks like USB\VID_XXXX&PID_XXXX\<serial>
+        /// and carries no &amp;MI_NN interface qualifier. Returns null if no such ancestor is found.
+        /// </summary>
+        private static ManagementObject FindUsbRootParent(ManagementObject portObj, string portInstanceId)
+        {
+            // root USB device PNPDeviceID looks like USB\VID_XXXX&PID_XXXX\<sn>.
+            // Child interfaces are USB\VID_XXXX&PID_XXXX&MI_NN\<...> — the &MI_ token
+            // before the final '\' disqualifies them. SNs themselves may contain '&'
+            // (Windows fabricates instance IDs like "6&d382ae8&0&1" when no EEPROM SN exists).
+            Regex rootRegex = new Regex(@"^USB\\VID_[0-9A-F]{4}&PID_[0-9A-F]{4}\\[^\\]+$", RegexOptions.IgnoreCase);
+
+            try
+            {
+                string currentId = portInstanceId;
+                ManagementObject currentObj = portObj;
+
+                for (int hop = 0; hop < 6; hop++)
+                {
+                    if (rootRegex.IsMatch(currentId))
+                        return currentObj;
+
+                    string parentId = GetDeviceProperty(currentObj, "DEVPKEY_Device_Parent");
+                    if (string.IsNullOrEmpty(parentId) || parentId == currentId)
+                        break;
+
+                    string escaped = parentId.Replace("\\", "\\\\").Replace("'", "''");
+                    using (var search = new ManagementObjectSearcher("root\\CIMV2",
+                        $"SELECT * FROM Win32_PnPEntity WHERE PNPDeviceID='{escaped}'"))
+                    {
+                        ManagementObject next = search.Get().OfType<ManagementObject>().FirstOrDefault();
+                        if (next == null)
+                            break;
+                        currentObj = next;
+                        currentId = parentId;
+                    }
+                }
+            }
+            catch { }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Recovers the ST-Link probe's hardware serial number from the root USB device
+        /// (used as STM32_Programmer_CLI's sn= argument when multiple ST-Link probes are connected).
+        /// </summary>
+        private static string ResolveStLinkSerial(ManagementObject portObj, string portInstanceId)
+        {
+            ManagementObject parent = FindUsbRootParent(portObj, portInstanceId);
+            if (parent == null) return "";
+
+            try
+            {
+                string parentId = parent.GetPropertyValue("PNPDeviceID")?.ToString() ?? "";
+                Match m = Regex.Match(parentId, @"^USB\\VID_0483&PID_[0-9A-F]{4}\\([^\\]+)$", RegexOptions.IgnoreCase);
+                if (m.Success)
+                    return m.Groups[1].Value;
+            }
+            catch { }
+
+            return "";
         }
     }
 }

@@ -364,7 +364,7 @@ namespace SimplySerial
                     port.board.make,
                     port.board.model,
                     (port.isCircuitPython) ? " (CircuitPython-capable)" : "",
-                    (port.isStLink) ? " (SWD reset)" : "",
+                    (port.isStLink) ? $" (SWD reset, SN={port.stLinkSerial})" : "",
                     port.description,
                     ((port.busDescription.Length > 0) && !port.description.StartsWith(port.busDescription)) ? ("[" + port.busDescription + "]") : "",
                     (logging == true) ? ($"Logfile   : {logFile} (Mode = " + ((logMode == FileMode.Create) ? "OVERWRITE" : "APPEND") + ")\n") : "",
@@ -575,10 +575,15 @@ namespace SimplySerial
             bool success = false;
             try
             {
+                // include sn=<serial> when known, so the right ST-Link is targeted on multi-probe setups
+                string connectArgs = "-c port=swd reset=HWrst";
+                if (!string.IsNullOrEmpty(port.stLinkSerial))
+                    connectArgs += $" sn={port.stLinkSerial}";
+
                 ProcessStartInfo psi = new ProcessStartInfo
                 {
                     FileName = stm32CliPath,
-                    Arguments = "-c port=swd reset=HWrst",
+                    Arguments = connectArgs,
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
