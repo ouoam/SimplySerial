@@ -70,6 +70,7 @@ namespace SimplySerial
         static bool localEcho = false;
         static bool bulkSend = false;
         static bool disableDtrRts = false;
+        static string stm32CliPath = "STM32_Programmer_CLI";
 
         // dictionary of "special" keys with the corresponding string to send out when they are pressed
         static Dictionary<ConsoleKey, String> specialKeys = new Dictionary<ConsoleKey, String>
@@ -347,8 +348,8 @@ namespace SimplySerial
                 }
                 Output(String.Format("<<< SimplySerial v{0} connected via {1} >>>\n" +
                     "Settings  : {2} baud, {3} parity, {4} data bits, {5} stop bit{6}, {7} encoding, auto-connect {8}, echo {9}{10}{11}\n" +
-                    "Device    : {12} {13}{14} {15} {16}\n{17}" +
-                    "---\n\nUse CTRL-{18} to exit.\n",
+                    "Device    : {12} {13}{14}{15} {16} {17}\n{18}" +
+                    "---\n\nUse CTRL-{19} to exit.\n",
                     version,
                     port.name,
                     baud,
@@ -363,6 +364,7 @@ namespace SimplySerial
                     port.board.make,
                     port.board.model,
                     (port.isCircuitPython) ? " (CircuitPython-capable)" : "",
+                    (port.isStLink) ? " (SWD reset)" : "",
                     port.description,
                     ((port.busDescription.Length > 0) && !port.description.StartsWith(port.busDescription)) ? ("[" + port.busDescription + "]") : "",
                     (logging == true) ? ($"Logfile   : {logFile} (Mode = " + ((logMode == FileMode.Create) ? "OVERWRITE" : "APPEND") + ")\n") : "",
@@ -505,17 +507,28 @@ namespace SimplySerial
             {
                 serialPort.DiscardInBuffer();
 
-                serialPort.DtrEnable = false;
-                serialPort.RtsEnable = true;
-                serialPort.DtrEnable = serialPort.DtrEnable; // usbser.sys workaround
-                Thread.Sleep(100);
-                serialPort.RtsEnable = false;
-                serialPort.DtrEnable = serialPort.DtrEnable; // usbser.sys workaround
+                if (port.isStLink)
+                {
+                    if (!ResetViaSwd(serialPort))
+                    {
+                        // if SWD reset fails, abort — DTR/RTS would not reset the MCU over ST-Link VCP
+                        break;
+                    }
+                }
+                else
+                {
+                    serialPort.DtrEnable = false;
+                    serialPort.RtsEnable = true;
+                    serialPort.DtrEnable = serialPort.DtrEnable; // usbser.sys workaround
+                    Thread.Sleep(100);
+                    serialPort.RtsEnable = false;
+                    serialPort.DtrEnable = serialPort.DtrEnable; // usbser.sys workaround
 
-                serialPort.RtsEnable = true;
-                serialPort.DtrEnable = true;
+                    serialPort.RtsEnable = true;
+                    serialPort.DtrEnable = true;
 
-                Thread.Sleep(100);
+                    Thread.Sleep(100);
+                }
 
                 for (int i = 0; i < 30; i++)
                 {
@@ -553,6 +566,52 @@ namespace SimplySerial
             }
 
             serialPort.ReadTimeout = 1;
+        }
+
+        static bool ResetViaSwd(SerialPort serialPort)
+        {
+            // SWD and the VCP live on separate USB interfaces of the ST-Link, so the
+            // serial port can stay open while STM32_Programmer_CLI drives the SWD interface.
+            bool success = false;
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo
+                {
+                    FileName = stm32CliPath,
+                    Arguments = "-c port=swd reset=HWrst",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                using (Process p = Process.Start(psi))
+                {
+                    p.WaitForExit(15000);
+                    if (!p.HasExited)
+                    {
+                        try { p.Kill(); } catch { }
+                        Output($"<<< SWD reset timed out ({stm32CliPath}) >>>");
+                    }
+                    else if (p.ExitCode != 0)
+                    {
+                        Output($"<<< SWD reset failed (exit {p.ExitCode}) >>>");
+                    }
+                    else
+                    {
+                        success = true;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Output($"<<< SWD reset error: {e.GetType().Name}: {e.Message} >>>");
+                Output($"<<< Check that '{stm32CliPath}' is on PATH or specify -stm32cli:PATH >>>");
+            }
+
+            // give the MCU a moment to boot before sending the config-mode sequence
+            Thread.Sleep(100);
+            return success;
         }
 
         static void CheckKeyAndSleep(int millisecondsTimeout)
@@ -941,6 +1000,13 @@ namespace SimplySerial
             disableDtrRts = ArgProcessor_OnOff(value);
         }
 
+        static void ArgHandler_Stm32Cli(string value)
+        {
+            if (String.IsNullOrEmpty(value))
+                throw new ArgumentException();
+            stm32CliPath = value;
+        }
+
         static List<ArgumentData> ParseArguments(string[] args, bool noImmediate = false, string source = "")
         {
             List<ArgumentData> receivedArguments = new List<ArgumentData>();
@@ -1046,6 +1112,7 @@ namespace SimplySerial
             CommandLineArguments.Add("parity", new CommandLineArgument("parity", handler: ArgHandler_Parity));
             CommandLineArguments.Add("txonenter", new CommandLineArgument("txonenter", handler: ArgHandler_TXOnEnter));
             CommandLineArguments.Add("disabledtrrts", new CommandLineArgument("disabledtrrts", handler: ArgHandler_DisableDtrRts));
+            CommandLineArguments.Add("stm32cli", new CommandLineArgument("stm32cli", handler: ArgHandler_Stm32Cli));
 
             // Create a list of command-line arguments sorted by priority for processing
             List<CommandLineArgument> argumentsByPriority = CommandLineArguments.Values.OrderBy(a => a.Priority).ToList();
@@ -1212,6 +1279,8 @@ namespace SimplySerial
             Console.WriteLine("                    Determines what character(s) will be sent when the enter key is pressed.");
             Console.WriteLine("  -config:FILE      Load command-line arguments from the specified configuration file. (One command per line.)");
             Console.WriteLine("  -disabledtrrts    Disables DTR and RTS asserted");
+            Console.WriteLine("  -stm32cli:PATH    Path to STM32_Programmer_CLI executable (default: STM32_Programmer_CLI on PATH).");
+            Console.WriteLine("                    Used to reset STM32 targets via SWD when entering config mode on ST-Link VCP ports.");
             Console.WriteLine($"\nPress CTRL-{exitKey} to exit a running instance of SimplySerial.\n");
         }
 

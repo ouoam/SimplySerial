@@ -23,6 +23,7 @@ namespace SimplySerial
         public DateTime lastArrival;
         public Board board;
         public bool isCircuitPython = false;
+        public bool isStLink = false;
     }
 
 
@@ -58,6 +59,24 @@ namespace SimplySerial
             // as per INTERFACE_PREFIXES in adafruit_board_toolkit
             // (see https://github.com/adafruit/Adafruit_Board_Toolkit/blob/main/adafruit_board_toolkit)
             string[] cpb_descriptions = new string[] { "CircuitPython CDC ", "Sol CDC ", "StringCarM0Ex CDC " };
+
+            // known ST-Link debugger PIDs (VID 0483 = STMicroelectronics)
+            // PID assignments per ST's 99-stlink-plugdev.rules udev file
+            HashSet<string> stlinkPids = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "3744", // ST-Link v1
+                "3748", // ST-Link v2
+                "374A", // ST-Link v2.1
+                "374B", // ST-Link v2.1
+                "3752", // ST-Link v2.1 / STLink V3SET in Dual CDC mode
+                "3753", // STLink V3SET in Dual CDC mode
+                "374D", // STLink V3SET
+                "374E", // STLink V3SET
+                "374F", // STLink V3SET in normal mode
+                "3754", // STLink V3 (observed in the wild)
+                "3755", // STLink V3-PWR
+                "3757", // STLink V3-PWR
+            };
 
             if (Filters.All == null)
             {
@@ -146,6 +165,18 @@ namespace SimplySerial
                 {
                     if (c.busDescription.StartsWith(prefix))
                         c.isCircuitPython = true;
+                }
+
+                // detect ST-Link debugger virtual COM port
+                // match by known VID/PID, or by STMicroelectronics VID + "STLink"/"ST-Link" in description
+                if (c.vid == "0483" &&
+                    (stlinkPids.Contains(c.pid) ||
+                     c.description.IndexOf("STLink", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     c.description.IndexOf("ST-Link", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     c.busDescription.IndexOf("STLink", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     c.busDescription.IndexOf("ST-Link", StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    c.isStLink = true;
                 }
 
                 detectedPorts.Add(c);
